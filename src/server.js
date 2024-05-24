@@ -1,89 +1,57 @@
-// const http = require('http') // CommonJS => require
-import http from 'node:http' // ESModules => import/export  ::  prefix internal modules with "node:"
+import http from 'node:http'
+import { routes } from './routes.js'
+import { extractQueryParams } from './utils/extract-query-params.js'
 
-// `package.json` :: "type": "module",  ...{'commonJS'}
-
-
-/**
- * routes
- * - criar
- * - listar
- * - editar
- * - remover
+/** 
+ * * Query Parameters: URL Stateful => filtros, paginação, não obrigatórios
+ *   http://localhost:3333/users?userId=1&name=Nelio :: parâmetros nomeados
  * 
- * http
- * - metodo
- * - url
+ * * Route Parameters: identicação de recurso
+ *   GET http://localhost:3333/users/1
+ *   DELETE http://localhost:3333/users/1
  * 
- * GET, POST, PUT, PATCH, DELETE
+ * * Request Body: Envio de informçaões de um formulário (HTTPs)
+ *   POST http://localhost:3333/users/1
  * 
- * GET => buscar informação
- * POST => criar
- * PUT => editar, atualizar
- * PATCH => atualizar informação especifica
- * DELETE => apagar
- * 
- * posso ter a mesma rota com métodos diferentes
- * GET /users => buscar
- * POST /users => criar
- * 
- * Stateful - estado em memória local
- * Stateless
- * 
- * JSON - JavaSscript Object Notation
- * 
- * Headers (Req/Res) => Metadados
- *  .setHeader('Content-type', 'application/json') :: enviar na resposta
- * ::tb podemos obter o header da requisição
- * 
- * 
- * HTTP status code
- * 
- * Informational responses (100 – 199)
- * Successful responses (200 – 299)
- * Redirection messages (300 – 399)
- * Client error responses (400 – 499)
- * Server error responses (500 – 599)
- */
-
-const users = []
+ * * Edição e Remoção
+ * */
 
 const server = http.createServer((req, res) => {
-
     const { method, url} = req
-    console.log(method, url)
 
-    if (method === 'GET' && url === '/users') {
-        // return res.end('Listagem de usuários')
-        return res
-            .setHeader('Content-type', 'application/json')
-            .end(JSON.stringify(users))
+    res.setHeader('Content-type', 'application/json')
+
+    const route = routes.find(route => {
+        // return route.method === method && route.path === url
+        return route.method === method && route.path.test(url)
+    })
+
+    if (route) {
+        const routeParams = req.url.match(route.path)
+
+        // console.log(routeParams)
+        // console.log(routeParams.groups)
+
+        // const params = { ...routeParams.groups }
+        // console.log(params)
+        
+        // 2::
+        // const params = { ...routeParams.groups }
+        // console.log(params)
+        // { query: '?search=Nelio' }
+
+        // console.log(extractQueryParams(routeParams.groups.query))
+        // { search: 'Nelio' }
+
+        // req.params = { ...routeParams.groups }
+        const { query, ...params } = routeParams.groups
+        req.params = { params }
+        req.query = query ? extractQueryParams(query) : {}
+
+        return route.handler(req, res)
     }
 
-    if (method === 'POST' && url === '/users') {
-        users.push({
-            id: 1,
-            name: 'John Doe',
-            email: 'johndow@example.com'
-        })
-        // return res.end('Criação de usuário')
-        return res.writeHead(201).end()
-    }
-
-    // return res.end('Hello World')
-    // return res.end('Hello Ignite')
     return res.writeHead(404).end()
 })
 
-server.listen(3333) //localhost:3333
-
-/**
- *  new script in `package.json`
- * 
-    "scripts": {
-    "dev": "node --watch src/server.js"
-  },
-
-  :: npm run dev
-
- */
+server.listen(3333)
